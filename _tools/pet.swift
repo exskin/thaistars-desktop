@@ -123,6 +123,7 @@ enum L {
         "settings.about.designer.placeholder": [.zh: "輸入設計者資訊…", .en: "Enter designer info…", .th: "ใส่ข้อมูลผู้ออกแบบ…"],
         "settings.about.intro": [.zh: "產品介紹", .en: "About This App", .th: "เกี่ยวกับแอปนี้"],
         "settings.about.intro.placeholder": [.zh: "輸入產品介紹…", .en: "Enter app introduction…", .th: "ใส่คำแนะนำแอป…"],
+        "settings.about.usage": [.zh: "使用說明", .en: "How to Use", .th: "วิธีใช้งาน"],
     ]
     static func t(_ key: String, _ lang: Lang) -> String {
         table[key]?[lang] ?? table[key]?[.en] ?? key
@@ -138,23 +139,29 @@ enum L {
 
 // ============ 桌寵全局設定：名字 / 語言 / 關於（持久化到 UserDefaults） ============
 
+// 固定用一個跟執行檔名字無關的 suite，避免以後改檔名又把設定弄丟（UserDefaults.standard 是綁執行檔名的）
+let petDefaults = UserDefaults(suiteName: "com.olliehsu.deskpet")!
+
 final class AppSettings: ObservableObject {
-    @Published var lang: Lang { didSet { UserDefaults.standard.set(lang.rawValue, forKey: "petLang") } }
-    @Published var petName: String { didSet { UserDefaults.standard.set(petName, forKey: "petName") } }
-    @Published var aboutDesignerName: String { didSet { UserDefaults.standard.set(aboutDesignerName, forKey: "petAboutDesignerName") } }
+    @Published var lang: Lang { didSet { petDefaults.set(lang.rawValue, forKey: "petLang") } }
+    @Published var petName: String { didSet { petDefaults.set(petName, forKey: "petName") } }
+    @Published var aboutDesignerName: String { didSet { petDefaults.set(aboutDesignerName, forKey: "petAboutDesignerName") } }
     // 設計者簡介／產品介紹按語言分開存，跟着 lang 切換顯示
-    @Published var aboutDesignerZh: String { didSet { UserDefaults.standard.set(aboutDesignerZh, forKey: "petAboutDesignerZh") } }
-    @Published var aboutDesignerEn: String { didSet { UserDefaults.standard.set(aboutDesignerEn, forKey: "petAboutDesignerEn") } }
-    @Published var aboutDesignerTh: String { didSet { UserDefaults.standard.set(aboutDesignerTh, forKey: "petAboutDesignerTh") } }
-    @Published var aboutIntroZh: String { didSet { UserDefaults.standard.set(aboutIntroZh, forKey: "petAboutIntroZh") } }
-    @Published var aboutIntroEn: String { didSet { UserDefaults.standard.set(aboutIntroEn, forKey: "petAboutIntroEn") } }
-    @Published var aboutIntroTh: String { didSet { UserDefaults.standard.set(aboutIntroTh, forKey: "petAboutIntroTh") } }
+    @Published var aboutDesignerZh: String { didSet { petDefaults.set(aboutDesignerZh, forKey: "petAboutDesignerZh") } }
+    @Published var aboutDesignerEn: String { didSet { petDefaults.set(aboutDesignerEn, forKey: "petAboutDesignerEn") } }
+    @Published var aboutDesignerTh: String { didSet { petDefaults.set(aboutDesignerTh, forKey: "petAboutDesignerTh") } }
+    @Published var aboutIntroZh: String { didSet { petDefaults.set(aboutIntroZh, forKey: "petAboutIntroZh") } }
+    @Published var aboutIntroEn: String { didSet { petDefaults.set(aboutIntroEn, forKey: "petAboutIntroEn") } }
+    @Published var aboutIntroTh: String { didSet { petDefaults.set(aboutIntroTh, forKey: "petAboutIntroTh") } }
+    @Published var aboutUsageZh: String { didSet { petDefaults.set(aboutUsageZh, forKey: "petAboutUsageZh") } }
+    @Published var aboutUsageEn: String { didSet { petDefaults.set(aboutUsageEn, forKey: "petAboutUsageEn") } }
+    @Published var aboutUsageTh: String { didSet { petDefaults.set(aboutUsageTh, forKey: "petAboutUsageTh") } }
     // 生日（只存月/日，每年自動觸發）；0 = 未設定
-    @Published var birthdayMonth: Int { didSet { UserDefaults.standard.set(birthdayMonth, forKey: "petBirthdayMonth") } }
-    @Published var birthdayDay: Int { didSet { UserDefaults.standard.set(birthdayDay, forKey: "petBirthdayDay") } }
-    @Published var soundMuted: Bool { didSet { UserDefaults.standard.set(soundMuted, forKey: "petSoundMuted") } }
+    @Published var birthdayMonth: Int { didSet { petDefaults.set(birthdayMonth, forKey: "petBirthdayMonth") } }
+    @Published var birthdayDay: Int { didSet { petDefaults.set(birthdayDay, forKey: "petBirthdayDay") } }
+    @Published var soundMuted: Bool { didSet { petDefaults.set(soundMuted, forKey: "petSoundMuted") } }
     // 生日影片今年播過了沒（存 yyyy-MM-dd）；播完一輪就記錄，當天不再重播，之後照舊跟隨 Claude Code 狀態
-    @Published var birthdayLastShownDate: String { didSet { UserDefaults.standard.set(birthdayLastShownDate, forKey: "petBirthdayLastShownDate") } }
+    @Published var birthdayLastShownDate: String { didSet { petDefaults.set(birthdayLastShownDate, forKey: "petBirthdayLastShownDate") } }
 
     var isBirthdayToday: Bool {
         guard birthdayMonth > 0, birthdayDay > 0 else { return false }
@@ -175,9 +182,12 @@ final class AppSettings: ObservableObject {
     func aboutIntro(_ lang: Lang) -> String {
         switch lang { case .zh: return aboutIntroZh; case .en: return aboutIntroEn; case .th: return aboutIntroTh }
     }
+    func aboutUsage(_ lang: Lang) -> String {
+        switch lang { case .zh: return aboutUsageZh; case .en: return aboutUsageEn; case .th: return aboutUsageTh }
+    }
 
     init() {
-        let d = UserDefaults.standard
+        let d = petDefaults
         lang = Lang(rawValue: d.string(forKey: "petLang") ?? "") ?? .zh
         petName = d.string(forKey: "petName") ?? ""
         aboutDesignerName = d.string(forKey: "petAboutDesignerName") ?? ""
@@ -187,6 +197,9 @@ final class AppSettings: ObservableObject {
         aboutIntroZh = d.string(forKey: "petAboutIntroZh") ?? ""
         aboutIntroEn = d.string(forKey: "petAboutIntroEn") ?? ""
         aboutIntroTh = d.string(forKey: "petAboutIntroTh") ?? ""
+        aboutUsageZh = d.string(forKey: "petAboutUsageZh") ?? ""
+        aboutUsageEn = d.string(forKey: "petAboutUsageEn") ?? ""
+        aboutUsageTh = d.string(forKey: "petAboutUsageTh") ?? ""
         birthdayMonth = d.integer(forKey: "petBirthdayMonth")
         birthdayDay = d.integer(forKey: "petBirthdayDay")
         soundMuted = d.bool(forKey: "petSoundMuted")
@@ -848,6 +861,7 @@ struct AboutSettingsView: View {
         let lang = settings.lang
         let designerText = settings.aboutDesigner(lang)
         let introText = settings.aboutIntro(lang)
+        let usageText = settings.aboutUsage(lang)
         ScrollView {
             VStack(alignment: .leading, spacing: 32) {
                 VStack(alignment: .leading, spacing: 6) {
@@ -869,6 +883,14 @@ struct AboutSettingsView: View {
                     Text(introText.isEmpty ? L.t("settings.about.intro.placeholder", lang) : introText)
                         .font(.system(size: 12))
                         .foregroundColor(introText.isEmpty ? .secondary : .primary)
+                        .textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(L.t("settings.about.usage", lang)).font(.headline)
+                    Text(usageText)
+                        .font(.system(size: 12))
                         .textSelection(.enabled)
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
