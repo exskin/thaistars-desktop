@@ -68,10 +68,10 @@ func stateLabel(_ key: String, _ lang: Lang) -> String {
 
 enum L {
     static let table: [String: [Lang: String]] = [
-        "menu.settings": [.zh: "DIY 設定…", .en: "DIY Settings…", .th: "ตั้งค่า DIY…"],
+        "menu.settings": [.zh: "設定…", .en: "Settings…", .th: "ตั้งค่า…"],
         "menu.quit": [.zh: "退出桌寵", .en: "Quit Pet", .th: "ออกจากโปรแกรม"],
 
-        "settings.title": [.zh: "桌寵 DIY 設定", .en: "Pet DIY Settings", .th: "ตั้งค่า DIY สัตว์เลี้ยง"],
+        "settings.title": [.zh: "桌寵設定", .en: "Pet Settings", .th: "ตั้งค่าสัตว์เลี้ยง"],
         "settings.tab.actions": [.zh: "動作", .en: "Actions", .th: "ท่าทาง"],
         "settings.tab.general": [.zh: "一般設定", .en: "General", .th: "ทั่วไป"],
         "settings.tab.about": [.zh: "關於", .en: "About", .th: "เกี่ยวกับ"],
@@ -121,8 +121,8 @@ enum L {
 
         "settings.about.designer": [.zh: "設計者", .en: "Designer", .th: "ผู้ออกแบบ"],
         "settings.about.designer.placeholder": [.zh: "輸入設計者資訊…", .en: "Enter designer info…", .th: "ใส่ข้อมูลผู้ออกแบบ…"],
-        "settings.about.intro": [.zh: "產品介紹", .en: "About This App", .th: "เกี่ยวกับแอปนี้"],
-        "settings.about.intro.placeholder": [.zh: "輸入產品介紹…", .en: "Enter app introduction…", .th: "ใส่คำแนะนำแอป…"],
+        "settings.about.intro": [.zh: "項目介紹", .en: "About This App", .th: "เกี่ยวกับแอปนี้"],
+        "settings.about.intro.placeholder": [.zh: "輸入項目介紹…", .en: "Enter app introduction…", .th: "ใส่คำแนะนำแอป…"],
         "settings.about.usage": [.zh: "使用說明", .en: "How to Use", .th: "วิธีใช้งาน"],
     ]
     static func t(_ key: String, _ lang: Lang) -> String {
@@ -865,20 +865,6 @@ struct AboutSettingsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 32) {
                 VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 4) {
-                        Text(L.t("settings.about.designer", lang)).font(.headline)
-                        if !settings.aboutDesignerName.isEmpty {
-                            Text(settings.aboutDesignerName).font(.headline)
-                        }
-                    }
-                    Text(designerText.isEmpty ? L.t("settings.about.designer.placeholder", lang) : designerText)
-                        .font(.system(size: 12))
-                        .foregroundColor(designerText.isEmpty ? .secondary : .primary)
-                        .textSelection(.enabled)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                VStack(alignment: .leading, spacing: 6) {
                     Text(L.t("settings.about.intro", lang)).font(.headline)
                     Text(introText.isEmpty ? L.t("settings.about.intro.placeholder", lang) : introText)
                         .font(.system(size: 12))
@@ -891,6 +877,20 @@ struct AboutSettingsView: View {
                     Text(L.t("settings.about.usage", lang)).font(.headline)
                     Text(usageText)
                         .font(.system(size: 12))
+                        .textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 4) {
+                        Text(L.t("settings.about.designer", lang)).font(.headline)
+                        if !settings.aboutDesignerName.isEmpty {
+                            Text(settings.aboutDesignerName).font(.headline)
+                        }
+                    }
+                    Text(designerText.isEmpty ? L.t("settings.about.designer.placeholder", lang) : designerText)
+                        .font(.system(size: 12))
+                        .foregroundColor(designerText.isEmpty ? .secondary : .primary)
                         .textSelection(.enabled)
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
