@@ -17,7 +17,7 @@ let ROW_H: CGFloat = 15
 let LIST_H = CGFloat(MAX_ROWS) * ROW_H + 8
 let BUBBLE_H: CGFloat = 30
 // 狀態優先級：多專案並存時，桌寵本人的動作/聲音跟這個順序裏最靠前的走
-let PRIORITY: [String] = ["waiting", "working", "thinking", "error", "done", "idle"]
+let PRIORITY: [String] = ["waiting", "working", "thinking", "done", "idle"]
 
 struct ProjectRow { let name: String; let status: String }
 
@@ -28,8 +28,9 @@ let STATES: [String: StateStyle] = [
     "working":  .init(badge: "🛠️", text: "Working",  dot: NSColor(red: 0.94, green: 0.63, blue: 0.13, alpha: 1)),
     "waiting":  .init(badge: "🙋", text: "Waiting for you!", dot: NSColor(red: 0.88, green: 0.27, blue: 0.48, alpha: 1)),
     "done":     .init(badge: "✨", text: "Done",      dot: NSColor(red: 0.18, green: 0.76, blue: 0.42, alpha: 1)),
-    "error":    .init(badge: "😵", text: "Error",     dot: NSColor(red: 0.88, green: 0.27, blue: 0.48, alpha: 1)),
     "boot":     .init(badge: "🍵", text: "Ready",     dot: NSColor(red: 0.54, green: 0.56, blue: 0.60, alpha: 1)),
+    "shutdown": .init(badge: "👋", text: "Bye",       dot: NSColor(red: 0.54, green: 0.56, blue: 0.60, alpha: 1)),
+    "birthday": .init(badge: "🎂", text: "Happy Birthday!", dot: NSColor(red: 0.93, green: 0.42, blue: 0.63, alpha: 1)),
 ]
 
 // ============ 語言 / 在地化 ============
@@ -53,8 +54,9 @@ let STATE_TEXT: [String: [Lang: String]] = [
     "working":  [.zh: "工作中",     .en: "Working",           .th: "กำลังทำงาน"],
     "waiting":  [.zh: "等你回話！", .en: "Waiting for you!",  .th: "รอคุณตอบ!"],
     "done":     [.zh: "搞定啦",     .en: "Done",              .th: "เสร็จแล้ว"],
-    "error":    [.zh: "出錯了",     .en: "Error",             .th: "ผิดพลาด"],
     "boot":     [.zh: "待命中",     .en: "Ready",             .th: "พร้อม"],
+    "shutdown": [.zh: "先下班啦",   .en: "Bye for now",       .th: "แล้วเจอกันนะ"],
+    "birthday": [.zh: "生日快樂！", .en: "Happy Birthday!",   .th: "สุขสันต์วันเกิด!"],
 ]
 
 func stateText(_ key: String, _ lang: Lang) -> String {
@@ -110,6 +112,10 @@ enum L {
         "settings.name.label": [.zh: "桌寵名字", .en: "Pet Name", .th: "ชื่อสัตว์เลี้ยง"],
         "settings.name.placeholder": [.zh: "輸入名字…", .en: "Enter a name…", .th: "ใส่ชื่อ…"],
         "settings.lang.label": [.zh: "語言", .en: "Language", .th: "ภาษา"],
+        "settings.birthday.label": [.zh: "生日", .en: "Birthday", .th: "วันเกิด"],
+        "settings.birthday.unset": [.zh: "未設定", .en: "—", .th: "ไม่ระบุ"],
+        "settings.birthday.month": [.zh: "月", .en: "month", .th: "เดือน"],
+        "settings.birthday.day": [.zh: "日", .en: "day", .th: "วัน"],
         "settings.save": [.zh: "保存", .en: "Save", .th: "บันทึก"],
         "settings.saved": [.zh: "✓ 已儲存", .en: "✓ Saved", .th: "✓ บันทึกแล้ว"],
 
@@ -143,6 +149,15 @@ final class AppSettings: ObservableObject {
     @Published var aboutIntroZh: String { didSet { UserDefaults.standard.set(aboutIntroZh, forKey: "petAboutIntroZh") } }
     @Published var aboutIntroEn: String { didSet { UserDefaults.standard.set(aboutIntroEn, forKey: "petAboutIntroEn") } }
     @Published var aboutIntroTh: String { didSet { UserDefaults.standard.set(aboutIntroTh, forKey: "petAboutIntroTh") } }
+    // 生日（只存月/日，每年自動觸發）；0 = 未設定
+    @Published var birthdayMonth: Int { didSet { UserDefaults.standard.set(birthdayMonth, forKey: "petBirthdayMonth") } }
+    @Published var birthdayDay: Int { didSet { UserDefaults.standard.set(birthdayDay, forKey: "petBirthdayDay") } }
+
+    var isBirthdayToday: Bool {
+        guard birthdayMonth > 0, birthdayDay > 0 else { return false }
+        let c = Calendar.current.dateComponents([.month, .day], from: Date())
+        return c.month == birthdayMonth && c.day == birthdayDay
+    }
 
     func aboutDesigner(_ lang: Lang) -> String {
         switch lang { case .zh: return aboutDesignerZh; case .en: return aboutDesignerEn; case .th: return aboutDesignerTh }
@@ -162,6 +177,8 @@ final class AppSettings: ObservableObject {
         aboutIntroZh = d.string(forKey: "petAboutIntroZh") ?? ""
         aboutIntroEn = d.string(forKey: "petAboutIntroEn") ?? ""
         aboutIntroTh = d.string(forKey: "petAboutIntroTh") ?? ""
+        birthdayMonth = d.integer(forKey: "petBirthdayMonth")
+        birthdayDay = d.integer(forKey: "petBirthdayDay")
     }
 }
 
@@ -174,6 +191,7 @@ final class PetView: NSView {
     var dot = STATES["boot"]!.dot
     var rows: [ProjectRow] = []     // 專案清單（最多 MAX_ROWS 條）
     var onOpenSettings: (() -> Void)?
+    var onQuit: (() -> Void)?
     var settings: AppSettings!
 
     override var acceptsFirstResponder: Bool { true }
@@ -242,10 +260,13 @@ final class PetView: NSView {
         settingsItem.target = self
         menu.addItem(settingsItem)
         menu.addItem(NSMenuItem.separator())
-        menu.addItem(withTitle: L.t("menu.quit", lang), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "")
+        let quitItem = NSMenuItem(title: L.t("menu.quit", lang), action: #selector(quitClicked), keyEquivalent: "")
+        quitItem.target = self
+        menu.addItem(quitItem)
         NSMenu.popUpContextMenu(menu, with: event, for: self)
     }
     @objc func openSettingsClicked() { onOpenSettings?() }
+    @objc func quitClicked() { onQuit?() }
     // 雙擊 → 切回 Claude App
     override func mouseUp(with event: NSEvent) {
         if event.clickCount == 2 {
@@ -256,7 +277,7 @@ final class PetView: NSView {
         super.mouseUp(with: event)
     }
     override func keyDown(with event: NSEvent) {
-        if event.keyCode == 53 { NSApp.terminate(nil) }  // Esc
+        if event.keyCode == 53 { onQuit?() }  // Esc
     }
 }
 
@@ -347,6 +368,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         view = PetView(frame: NSRect(x: 0, y: 0, width: W, height: H))
         view.onOpenSettings = { [weak self] in self?.openSettings() }
+        view.onQuit = { [weak self] in self?.quitWithAnimation() }
         view.settings = settings
         view.name = settings.petName
         applyGroup(for: "boot")
@@ -384,6 +406,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             settingsWC = SettingsWindowController(appDelegate: self)
         }
         settingsWC?.show()
+    }
+
+    // 退出前先播一段關機動作（沒有素材就直接退出）
+    func quitWithAnimation() {
+        guard let f = groups["shutdown"] else { NSApp.terminate(nil); return }
+        curGroup = "shutdown"
+        view.frames = f; view.animate = true; view.fi = 0
+        view.badge = STATES["shutdown"]!.badge
+        view.label = stateText("shutdown", settings.lang)
+        view.dot = STATES["shutdown"]!.dot
+        view.needsDisplay = true
+        if let snd = sounds["shutdown"] { snd.currentTime = 0; snd.play() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { NSApp.terminate(nil) }
     }
 
     // 狀態 → 動作組：有專屬組就循環播放；沒有就用兜底組第一幀靜止站着
@@ -430,8 +465,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         view.rows = live.filter { $0.status == "waiting" }
         view.needsDisplay = true
 
-        // 桌寵本人跟隨全體專案裏優先級最高的狀態走（waiting 優先）
-        let key = PRIORITY.first { p in live.contains { $0.status == p } } ?? "boot"
+        // 桌寵本人跟隨全體專案裏優先級最高的狀態走（waiting 優先）；生日當天整天蓋過其他狀態
+        let priorityKey = PRIORITY.first { p in live.contains { $0.status == p } } ?? "boot"
+        let key = settings.isBirthdayToday ? "birthday" : priorityKey
         let st = STATES[key]!
         let text = stateText(key, settings.lang)
         if view.badge != st.badge || view.label != text {
@@ -443,7 +479,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
 // ============ DIY 設定：上傳影片 → 點選背景色 → 自動摳圖 → 熱更新 ============
 
-let DIY_STATE_KEYS = ["thinking", "working", "waiting", "idle", "done", "error"]
+let DIY_STATE_KEYS = ["thinking", "working", "waiting", "idle", "done", "boot", "shutdown", "birthday"]
 
 final class StateAssetModel: ObservableObject, Identifiable {
     let key: String
@@ -704,6 +740,8 @@ struct GeneralSettingsView: View {
     @ObservedObject var settings: AppSettings
     @State private var draftName: String = ""
     @State private var draftLang: Lang = .zh
+    @State private var draftBirthdayMonth: Int = 0
+    @State private var draftBirthdayDay: Int = 0
     @State private var justSaved = false
 
     var body: some View {
@@ -724,11 +762,28 @@ struct GeneralSettingsView: View {
                 .labelsHidden()
                 .frame(width: 240)
             }
+            VStack(alignment: .leading, spacing: 6) {
+                Text(L.t("settings.birthday.label", lang)).font(.headline)
+                HStack(spacing: 6) {
+                    Picker("", selection: $draftBirthdayMonth) {
+                        Text(L.t("settings.birthday.unset", lang)).tag(0)
+                        ForEach(1...12, id: \.self) { m in Text("\(m)").tag(m) }
+                    }.labelsHidden().frame(width: 70)
+                    Text(L.t("settings.birthday.month", lang)).font(.caption)
+                    Picker("", selection: $draftBirthdayDay) {
+                        Text(L.t("settings.birthday.unset", lang)).tag(0)
+                        ForEach(1...31, id: \.self) { d in Text("\(d)").tag(d) }
+                    }.labelsHidden().frame(width: 70)
+                    Text(L.t("settings.birthday.day", lang)).font(.caption)
+                }
+            }
             Spacer()
             HStack(spacing: 8) {
                 Button(L.t("settings.save", lang)) {
                     settings.petName = draftName
                     settings.lang = draftLang
+                    settings.birthdayMonth = draftBirthdayMonth
+                    settings.birthdayDay = draftBirthdayDay
                     justSaved = true
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { justSaved = false }
                 }
@@ -739,7 +794,10 @@ struct GeneralSettingsView: View {
             }
         }
         .padding(16)
-        .onAppear { draftName = settings.petName; draftLang = settings.lang }
+        .onAppear {
+            draftName = settings.petName; draftLang = settings.lang
+            draftBirthdayMonth = settings.birthdayMonth; draftBirthdayDay = settings.birthdayDay
+        }
     }
 }
 
