@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-Claude Code 桌宠（玲玲拉茶版）—— 她在桌面循环拉茶，底部气泡显示 Claude Code 状态。
+Claude Code 桌寵（玲玲拉茶版）—— 她在桌面循環拉茶，底部氣泡顯示 Claude Code 狀態。
 
 原理：
-  Claude Code 的 hooks 把当前状态写进 ~/.claude/claude_pet_status.json，
-  桌宠每 250ms 读一次，切换底部气泡的表情/台词/颜色。
-  人物动画本身来自绿幕视频抠出的 PNG 帧序列（frames/）。
+  Claude Code 的 hooks 把當前狀態寫進 ~/.claude/claude_pet_status.json，
+  桌寵每 250ms 讀一次，切換底部氣泡的表情/臺詞/顏色。
+  人物動畫本身來自綠幕視頻摳出的 PNG 幀序列（frames/）。
 
-操作：按住拖动挪位置；右键 → 退出；Esc 退出。
+操作：按住拖動挪位置；右鍵 → 退出；Esc 退出。
 """
 
 import json
@@ -23,12 +23,12 @@ FRAME_MS = 83          # ~12fps
 STALE_SEC = 120
 
 STATES = {
-    "idle":     {"badge": "😴", "text": "空闲中",   "dot": "#8a8f98"},
+    "idle":     {"badge": "😴", "text": "空閒中",   "dot": "#8a8f98"},
     "thinking": {"badge": "🤔", "text": "思考中",   "dot": "#5b8def"},
-    "working":  {"badge": "🛠️", "text": "干活中",   "dot": "#f0a020"},
-    "waiting":  {"badge": "🙋", "text": "等你回话!", "dot": "#e0457b"},
+    "working":  {"badge": "🛠️", "text": "幹活中",   "dot": "#f0a020"},
+    "waiting":  {"badge": "🙋", "text": "等你回話!", "dot": "#e0457b"},
     "done":     {"badge": "✨", "text": "搞定啦",   "dot": "#2ec16b"},
-    "error":    {"badge": "😵", "text": "出错了",   "dot": "#e0457b"},
+    "error":    {"badge": "😵", "text": "出錯了",   "dot": "#e0457b"},
     "boot":     {"badge": "🍵", "text": "待命中",   "dot": "#8a8f98"},
 }
 
@@ -44,13 +44,13 @@ class Pet:
             pass
         self.root.config(bg="systemTransparent")
 
-        # 载入帧序列
+        # 載入幀序列
         self.frames = []
         for name in sorted(os.listdir(FRAMES_DIR)):
             if name.lower().endswith(".png"):
                 self.frames.append(tk.PhotoImage(file=os.path.join(FRAMES_DIR, name)))
         if not self.frames:
-            raise SystemExit("frames/ 里没有 PNG 帧")
+            raise SystemExit("frames/ 裏沒有 PNG 幀")
         self.iw = self.frames[0].width()
         self.ih = self.frames[0].height()
 
@@ -64,10 +64,10 @@ class Pet:
                                 bg="systemTransparent", highlightthickness=0, bd=0)
         self.canvas.pack()
 
-        # 人物图（帧动画）
+        # 人物圖（幀動畫）
         self.sprite = self.canvas.create_image(self.W // 2, 0, anchor="n", image=self.frames[0])
 
-        # 底部状态气泡
+        # 底部狀態氣泡
         by = self.ih + 2
         self.bubble = self.canvas.create_rectangle(
             12, by, self.W - 12, by + 24, fill="#20232a", outline="")
@@ -84,7 +84,7 @@ class Pet:
         self.canvas.bind("<Button-3>", self._menu_popup)
         self.root.bind("<Escape>", lambda e: self.root.destroy())
         self.menu = tk.Menu(self.root, tearoff=0)
-        self.menu.add_command(label="退出桌宠", command=self.root.destroy)
+        self.menu.add_command(label="退出桌寵", command=self.root.destroy)
 
         self._fi = 0
         self._cur = None

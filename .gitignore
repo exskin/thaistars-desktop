@@ -3,8 +3,8 @@ __pycache__/
 .DS_Store
 pet.log
 
-# 编译产物（Swift 二进制，clone 下来自己用 swiftc 重新编译）
-宠物本体
+# 編譯產物（Swift 二進制，clone 下來自己用 swiftc 重新編譯）
+寵物本體
 _tools/greenframes
 _tools/segment
 _tools/preview

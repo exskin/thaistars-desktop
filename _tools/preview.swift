@@ -2,12 +2,12 @@ import Foundation
 import CoreImage
 import ImageIO
 
-// 用法: preview <png> <out.png>  —— 把透明PNG合成到棋盘格底上，方便看真实抠图质量
+// 用法: preview <png> <out.png>  —— 把透明PNG合成到棋盤格底上，方便看真實摳圖質量
 let a = CommandLine.arguments
 guard a.count >= 3 else { exit(1) }
 let ci = CIImage(contentsOf: URL(fileURLWithPath: a[1]))!
 let ext = ci.extent
-// 棋盘格背景
+// 棋盤格背景
 let cb = CIFilter(name: "CICheckerboardGenerator")!
 cb.setValue(CIColor(red: 0.85, green: 0.85, blue: 0.87), forKey: "inputColor0")
 cb.setValue(CIColor(red: 0.70, green: 0.70, blue: 0.74), forKey: "inputColor1")

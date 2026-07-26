@@ -2,7 +2,7 @@ import Foundation
 import AVFoundation
 import ImageIO
 
-// 用法: raw_frames <video> <outDir> <count>  —— 抽原始帧(不抠图),文件名带时间戳,看字幕用
+// 用法: raw_frames <video> <outDir> <count>  —— 抽原始幀(不摳圖),文件名帶時間戳,看字幕用
 let a = CommandLine.arguments
 guard a.count >= 4, let count = Int(a[3]) else { exit(1) }
 try? FileManager.default.createDirectory(atPath: a[2], withIntermediateDirectories: true)

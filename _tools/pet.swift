@@ -5,18 +5,18 @@ import Foundation
 import SwiftUI
 import UniformTypeIdentifiers
 
-// Claude Code 桌宠（原生版）：透明置顶窗口 + PNG帧动画 + 状态气泡
-// 状态来自 ~/.claude/claude_pet_status.json（hooks 写入）
+// Claude Code 桌寵（原生版）：透明置頂窗口 + PNG幀動畫 + 狀態氣泡
+// 狀態來自 ~/.claude/claude_pet_status.json（hooks 寫入）
 
 let FRAME_MS = 83.0 / 1000.0    // ~12fps
 let POLL_S = 0.25
-let STALE_SEC = 600.0           // 单个专案超过这么久没动静（10分钟）→ 该专案视为 idle
-let LIST_STALE_SEC = 1800.0     // 超过这么久没动静 → 该专案从清单消失（视为已结束）
+let STALE_SEC = 600.0           // 單個專案超過這麼久沒動靜（10分鐘）→ 該專案視爲 idle
+let LIST_STALE_SEC = 1800.0     // 超過這麼久沒動靜 → 該專案從清單消失（視爲已結束）
 let MAX_ROWS = 6
 let ROW_H: CGFloat = 15
 let LIST_H = CGFloat(MAX_ROWS) * ROW_H + 8
 let BUBBLE_H: CGFloat = 30
-// 状态优先级：多专案并存时，桌宠本人的动作/声音跟这个顺序里最靠前的走
+// 狀態優先級：多專案並存時，桌寵本人的動作/聲音跟這個順序裏最靠前的走
 let PRIORITY: [String] = ["waiting", "working", "thinking", "error", "done", "idle"]
 
 struct ProjectRow { let name: String; let status: String }
@@ -32,7 +32,7 @@ let STATES: [String: StateStyle] = [
     "boot":     .init(badge: "🍵", text: "Ready",     dot: NSColor(red: 0.54, green: 0.56, blue: 0.60, alpha: 1)),
 ]
 
-// ============ 语言 / 在地化 ============
+// ============ 語言 / 在地化 ============
 
 enum Lang: String, CaseIterable, Identifiable, Hashable {
     case zh, en, th
@@ -46,7 +46,7 @@ enum Lang: String, CaseIterable, Identifiable, Hashable {
     }
 }
 
-// 状态文字的三语版本；badge/dot 沿用 STATES，找不到就退回英文
+// 狀態文字的三語版本；badge/dot 沿用 STATES，找不到就退回英文
 let STATE_TEXT: [String: [Lang: String]] = [
     "idle":     [.zh: "空閒中",     .en: "Idle",              .th: "ว่าง"],
     "thinking": [.zh: "思考中",     .en: "Thinking",          .th: "กำลังคิด"],
@@ -93,9 +93,9 @@ enum L {
         "upload.pickColor": [.zh: "請點選背景色", .en: "Please pick the background color", .th: "กรุณาเลือกสีพื้นหลัง"],
         "upload.titleZh": [.zh: "選擇「%@」要用的影片", .en: "選擇「%@」要用的影片", .th: "選擇「%@」要用的影片"],
 
-        "process.processing": [.zh: "抠圖處理中…", .en: "Removing background…", .th: "กำลังลบพื้นหลัง…"],
-        "process.fail": [.zh: "抠圖失敗", .en: "Background removal failed", .th: "ลบพื้นหลังไม่สำเร็จ"],
-        "process.noContent": [.zh: "沒抠到內容，換張影片試試", .en: "Nothing extracted, try another video", .th: "ไม่พบเนื้อหา ลองวิดีโออื่น"],
+        "process.processing": [.zh: "摳圖處理中…", .en: "Removing background…", .th: "กำลังลบพื้นหลัง…"],
+        "process.fail": [.zh: "摳圖失敗", .en: "Background removal failed", .th: "ลบพื้นหลังไม่สำเร็จ"],
+        "process.noContent": [.zh: "沒摳到內容，換張影片試試", .en: "Nothing extracted, try another video", .th: "ไม่พบเนื้อหา ลองวิดีโออื่น"],
         "process.done": [.zh: "已更新 ✓ 桌寵已即時套用", .en: "Updated ✓ applied instantly", .th: "อัปเดตแล้ว ✓ นำไปใช้ทันที"],
 
         "colorpick.title": [.zh: "點選背景色", .en: "Pick Background Color", .th: "เลือกสีพื้นหลัง"],
@@ -130,13 +130,13 @@ enum L {
     }
 }
 
-// ============ 桌宠全局设定：名字 / 语言 / 关于（持久化到 UserDefaults） ============
+// ============ 桌寵全局設定：名字 / 語言 / 關於（持久化到 UserDefaults） ============
 
 final class AppSettings: ObservableObject {
     @Published var lang: Lang { didSet { UserDefaults.standard.set(lang.rawValue, forKey: "petLang") } }
     @Published var petName: String { didSet { UserDefaults.standard.set(petName, forKey: "petName") } }
     @Published var aboutDesignerName: String { didSet { UserDefaults.standard.set(aboutDesignerName, forKey: "petAboutDesignerName") } }
-    // 设计者简介／产品介绍按语言分开存，跟着 lang 切换显示
+    // 設計者簡介／產品介紹按語言分開存，跟着 lang 切換顯示
     @Published var aboutDesignerZh: String { didSet { UserDefaults.standard.set(aboutDesignerZh, forKey: "petAboutDesignerZh") } }
     @Published var aboutDesignerEn: String { didSet { UserDefaults.standard.set(aboutDesignerEn, forKey: "petAboutDesignerEn") } }
     @Published var aboutDesignerTh: String { didSet { UserDefaults.standard.set(aboutDesignerTh, forKey: "petAboutDesignerTh") } }
@@ -166,26 +166,26 @@ final class AppSettings: ObservableObject {
 }
 
 final class PetView: NSView {
-    var frames: [NSImage] = []      // 当前状态的动作帧组
+    var frames: [NSImage] = []      // 當前狀態的動作幀組
     var fi = 0
-    var animate = true              // 该组是否循环播放（静止姿势=false）
+    var animate = true              // 該組是否循環播放（靜止姿勢=false）
     var badge = "🍵", label = "Ready"
-    var name = ""                   // 桌宠名字，气泡文字前面
+    var name = ""                   // 桌寵名字，氣泡文字前面
     var dot = STATES["boot"]!.dot
-    var rows: [ProjectRow] = []     // 专案清单（最多 MAX_ROWS 条）
+    var rows: [ProjectRow] = []     // 專案清單（最多 MAX_ROWS 條）
     var onOpenSettings: (() -> Void)?
     var settings: AppSettings!
 
     override var acceptsFirstResponder: Bool { true }
 
     override func draw(_ dirtyRect: NSRect) {
-        // 先清成全透明，避免上一帧的像素残留造成残影
+        // 先清成全透明，避免上一幀的像素殘留造成殘影
         NSGraphicsContext.current?.cgContext.clear(bounds)
 
-        // 专案清单（窗口最底部，固定预留区域，不足则留白）
+        // 專案清單（窗口最底部，固定預留區域，不足則留白）
         let bw = bounds.width - 24
         if !rows.isEmpty {
-            // 深色底板：不管桌面背景是黑是白，文字对比度都固定，不用侦测桌面颜色
+            // 深色底板：不管桌面背景是黑是白，文字對比度都固定，不用偵測桌面顏色
             let panelH = CGFloat(min(rows.count, MAX_ROWS)) * ROW_H + 6
             let panel = NSBezierPath(roundedRect: NSRect(x: 12, y: LIST_H - panelH, width: bw, height: panelH),
                                      xRadius: 8, yRadius: 8)
@@ -212,17 +212,17 @@ final class PetView: NSView {
         guard !frames.isEmpty else { return }
         let img = frames[fi]
         let iw = img.size.width, ih = img.size.height
-        // 人物（顶部对齐居中，位于清单+气泡之上）
+        // 人物（頂部對齊居中，位於清單+氣泡之上）
         let x = (bounds.width - iw) / 2
         img.draw(in: NSRect(x: x, y: LIST_H + BUBBLE_H, width: iw, height: ih))
-        // 气泡（清单正上方）
+        // 氣泡（清單正上方）
         let bubble = NSBezierPath(roundedRect: NSRect(x: 12, y: LIST_H + 2, width: bw, height: 24), xRadius: 12, yRadius: 12)
         NSColor(red: 0.125, green: 0.137, blue: 0.165, alpha: 0.95).setFill()
         bubble.fill()
-        // 圆点
+        // 圓點
         let dotPath = NSBezierPath(ovalIn: NSRect(x: 22, y: LIST_H + 9, width: 10, height: 10))
         dot.setFill(); dotPath.fill()
-        // 文字：名字（若有）+ badge + 状态文字
+        // 文字：名字（若有）+ badge + 狀態文字
         let para = NSMutableParagraphStyle(); para.alignment = .center
         let namePrefix = name.trimmingCharacters(in: .whitespaces).isEmpty ? "" : "\(name) · "
         let str = "\(namePrefix)\(badge) \(label)" as NSString
@@ -234,7 +234,7 @@ final class PetView: NSView {
         str.draw(in: NSRect(x: 34, y: LIST_H + 5, width: bw - 44, height: 18), withAttributes: attrs)
     }
 
-    // 右键菜单：DIY 设定 / 退出
+    // 右鍵菜單：DIY 設定 / 退出
     override func rightMouseDown(with event: NSEvent) {
         let lang = settings?.lang ?? .zh
         let menu = NSMenu()
@@ -246,7 +246,7 @@ final class PetView: NSView {
         NSMenu.popUpContextMenu(menu, with: event, for: self)
     }
     @objc func openSettingsClicked() { onOpenSettings?() }
-    // 双击 → 切回 Claude App
+    // 雙擊 → 切回 Claude App
     override func mouseUp(with event: NSEvent) {
         if event.clickCount == 2 {
             NSWorkspace.shared.launchApplication(
@@ -265,10 +265,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var view: PetView!
     let statusPath = (NSHomeDirectory() as NSString).appendingPathComponent(".claude/claude_pet_status.json")
 
-    var projectBase: URL!    // 项目根目录（frames/、_tools/ 所在处）
+    var projectBase: URL!    // 項目根目錄（frames/、_tools/ 所在處）
     var framesDir: URL { projectBase.appendingPathComponent("frames") }
-    var groups: [String: [NSImage]] = [:]   // 状态名 → 动作帧组
-    var sounds: [String: AVAudioPlayer] = [:]  // 状态名 → 音效
+    var groups: [String: [NSImage]] = [:]   // 狀態名 → 動作幀組
+    var sounds: [String: AVAudioPlayer] = [:]  // 狀態名 → 音效
     var curGroup = ""
     var settingsWC: SettingsWindowController?
     let settings = AppSettings()
@@ -289,7 +289,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return nil
     }
 
-    // 扫描 frames/ 目录重建 groups/sounds，可在 DIY 上传新素材后热重载，不用重启整个程序
+    // 掃描 frames/ 目錄重建 groups/sounds，可在 DIY 上傳新素材後熱重載，不用重啓整個程序
     @discardableResult
     func reloadFrames() -> Bool {
         var newGroups: [String: [NSImage]] = [:]
@@ -312,8 +312,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         groups = newGroups
         sounds = newSounds
         FileHandle.standardError.write("Action groups / 動作組: \(groups.keys.sorted())  Sounds / 音效: \(sounds.keys.sorted())\n".data(using: .utf8)!)
-        curGroup = ""   // 强制下一次 pollStatus 重新套用当前状态的（可能是新的）素材
-        if view != nil { pollStatus() }   // 首次启动时 view 还没建立，跳过；DIY 热重载时才需要立刻套用
+        curGroup = ""   // 強制下一次 pollStatus 重新套用當前狀態的（可能是新的）素材
+        if view != nil { pollStatus() }   // 首次啓動時 view 還沒建立，跳過；DIY 熱重載時才需要立刻套用
         return true
     }
 
@@ -325,7 +325,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             FileHandle.standardError.write("No usable PNG found in frames/ / frames/ 裡沒有可用的 PNG\n".data(using: .utf8)!)
             NSApp.terminate(nil); return
         }
-        // 窗口取所有动作组的最大尺寸，保证每个动作都放得下
+        // 窗口取所有動作組的最大尺寸，保證每個動作都放得下
         var maxW: CGFloat = 150, maxH: CGFloat = 0
         for f in groups.values { for img in f {
             maxW = max(maxW, img.size.width); maxH = max(maxH, img.size.height)
@@ -340,10 +340,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                           styleMask: [.borderless], backing: .buffered, defer: false)
         window.isOpaque = false
         window.backgroundColor = .clear
-        window.level = .floating                       // 永远置顶
+        window.level = .floating                       // 永遠置頂
         window.hasShadow = false
         window.isMovableByWindowBackground = true       // 按住即拖
-        window.collectionBehavior = [.canJoinAllSpaces] // 所有桌面空间可见
+        window.collectionBehavior = [.canJoinAllSpaces] // 所有桌面空間可見
 
         view = PetView(frame: NSRect(x: 0, y: 0, width: W, height: H))
         view.onOpenSettings = { [weak self] in self?.openSettings() }
@@ -354,7 +354,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
 
-        // 语言／名字变动 → 立刻刷新气泡与视窗标题
+        // 語言／名字變動 → 立刻刷新氣泡與視窗標題
         settings.$lang.dropFirst().sink { [weak self] _ in
             guard let self else { return }
             self.settingsWC?.window?.title = L.t("settings.title", self.settings.lang)
@@ -366,13 +366,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.view.needsDisplay = true
         }.store(in: &cancellables)
 
-        // 帧动画（静止组不推进）
+        // 幀動畫（靜止組不推進）
         Timer.scheduledTimer(withTimeInterval: FRAME_MS, repeats: true) { [weak self] _ in
             guard let self, self.view.animate, self.view.frames.count > 1 else { return }
             self.view.fi = (self.view.fi + 1) % self.view.frames.count
             self.view.needsDisplay = true
         }
-        // 状态轮询
+        // 狀態輪詢
         Timer.scheduledTimer(withTimeInterval: POLL_S, repeats: true) { [weak self] _ in
             self?.pollStatus()
         }
@@ -386,18 +386,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         settingsWC?.show()
     }
 
-    // 状态 → 动作组：有专属组就循环播放；没有就用兜底组第一帧静止站着
+    // 狀態 → 動作組：有專屬組就循環播放；沒有就用兜底組第一幀靜止站着
     func applyGroup(for status: String) {
         guard curGroup != status else { return }
         curGroup = status
         if let f = groups[status] {
             view.frames = f; view.animate = true
         } else if let fallback = groups["default"] ?? groups["working"] ?? groups.values.first {
-            view.frames = [fallback[0]]; view.animate = false   // 静止姿势
+            view.frames = [fallback[0]]; view.animate = false   // 靜止姿勢
         }
         view.fi = 0
         view.needsDisplay = true
-        // 进入带音效的状态 → 播一声呼叫
+        // 進入帶音效的狀態 → 播一聲呼叫
         if let snd = sounds[status] { snd.currentTime = 0; snd.play() }
     }
 
@@ -411,7 +411,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             for (name, v) in projects {
                 guard let entry = v as? [String: Any] else { continue }
                 let ts = (entry["ts"] as? Double) ?? 0
-                if now - ts > LIST_STALE_SEC { continue }   // 太久没动静 → 视为已结束，从清单移除
+                if now - ts > LIST_STALE_SEC { continue }   // 太久沒動靜 → 視爲已結束，從清單移除
                 var s = (entry["status"] as? String) ?? "idle"
                 if s != "waiting", now - ts > STALE_SEC { s = "idle" }
                 if STATES[s] == nil { s = "idle" }
@@ -419,18 +419,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
-        // 排序：等你回话优先，其余按状态优先级，再按名称稳定排序
+        // 排序：等你回話優先，其餘按狀態優先級，再按名稱穩定排序
         live.sort { a, b in
             let ra = PRIORITY.firstIndex(of: a.status) ?? 99
             let rb = PRIORITY.firstIndex(of: b.status) ?? 99
             if ra != rb { return ra < rb }
             return a.name < b.name
         }
-        // 底部清单只留「等你回話」的专案，其余在跑的任务不列出来
+        // 底部清單隻留「等你回話」的專案，其餘在跑的任務不列出來
         view.rows = live.filter { $0.status == "waiting" }
         view.needsDisplay = true
 
-        // 桌宠本人跟随全体专案里优先级最高的状态走（waiting 优先）
+        // 桌寵本人跟隨全體專案裏優先級最高的狀態走（waiting 優先）
         let key = PRIORITY.first { p in live.contains { $0.status == p } } ?? "boot"
         let st = STATES[key]!
         let text = stateText(key, settings.lang)
@@ -441,7 +441,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
-// ============ DIY 设定：上传影片 → 点选背景色 → 自动抠图 → 热更新 ============
+// ============ DIY 設定：上傳影片 → 點選背景色 → 自動摳圖 → 熱更新 ============
 
 let DIY_STATE_KEYS = ["thinking", "working", "waiting", "idle", "done", "error"]
 
@@ -503,7 +503,7 @@ final class SettingsModel: ObservableObject {
         row.isProcessing = true
         row.statusText = L.t("upload.reading", lang)
         if !row.removeBackground {
-            // 不去背景：跳过选色步骤，直接抽帧
+            // 不去背景：跳過選色步驟，直接抽幀
             process(row: row, videoURL: url, color: nil)
             return
         }
@@ -524,7 +524,7 @@ final class SettingsModel: ObservableObject {
         }
     }
 
-    // color 为 nil 表示不去背景，直接抽帧存原画面
+    // color 爲 nil 表示不去背景，直接抽幀存原畫面
     func process(row: StateAssetModel, videoURL: URL, color: NSColor?) {
         guard let ad = appDelegate else { return }
         let lang = settings.lang
@@ -585,7 +585,7 @@ final class SettingsModel: ObservableObject {
     }
 }
 
-// 让用户在影片首帧画面上用系统滴管点选背景色
+// 讓用戶在影片首幀畫面上用系統滴管點選背景色
 final class ColorPickWindowController: NSWindowController {
     var onColorPicked: ((NSColor) -> Void)?
     var onCancel: (() -> Void)?
@@ -824,7 +824,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     }
     func hide() { window?.orderOut(nil) }
 
-    // 点标题栏红色关闭钮 = 隐藏，不是真正结束（桌宠本体持续在背景跑）
+    // 點標題欄紅色關閉鈕 = 隱藏，不是真正結束（桌寵本體持續在背景跑）
     func windowShouldClose(_ sender: NSWindow) -> Bool {
         hide()
         return false
@@ -844,7 +844,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 }
 
 let app = NSApplication.shared
-app.setActivationPolicy(.accessory)   // 不占 Dock
+app.setActivationPolicy(.accessory)   // 不佔 Dock
 let delegate = AppDelegate()
 app.delegate = delegate
 app.run()

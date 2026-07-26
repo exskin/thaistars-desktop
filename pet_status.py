@@ -1,23 +1,23 @@
 # -*- coding: utf-8 -*-
 """
-Claude Code hook 调用它来更新桌宠状态。
-用法（由 hooks 自动调用）：  python3 pet_status.py <event>
+Claude Code hook 調用它來更新桌寵狀態。
+用法（由 hooks 自動調用）：  python3 pet_status.py <event>
 
-<event> 取值对应 Claude Code 的 hook 事件名，映射到桌宠状态：
-  userpromptsubmit -> thinking   (你刚发了消息，她开始想)
-  pretooluse       -> working    (正在调某个工具，读 stdin 拿工具名)
-  posttooluse      -> thinking   (工具跑完，继续想下一步)
-  notification     -> waiting    (需要你回话/授权)
-  stop             -> done       (这一轮答完了)
-  subagentstop      -> done      (子任务结束)
+<event> 取值對應 Claude Code 的 hook 事件名，映射到桌寵狀態：
+  userpromptsubmit -> thinking   (你剛發了消息，她開始想)
+  pretooluse       -> working    (正在調某個工具，讀 stdin 拿工具名)
+  posttooluse      -> thinking   (工具跑完，繼續想下一步)
+  notification     -> waiting    (需要你回話/授權)
+  stop             -> done       (這一輪答完了)
+  subagentstop      -> done      (子任務結束)
 
-  真正的 idle（发呆）不是任何 hook 事件触发的，是桌宠那边看 ts 判断：
-  超过 STALE_SEC（目前 10 分钟）没有新事件，才会从 done/其他状态退回 idle。
+  真正的 idle（發呆）不是任何 hook 事件觸發的，是桌寵那邊看 ts 判斷：
+  超過 STALE_SEC（目前 10 分鐘）沒有新事件，纔會從 done/其他狀態退回 idle。
 
-状态文件是多专案结构：{"projects": {"<项目名>": {"status","tool","ts"}, ...}}
-项目名取自 hook payload 里的 cwd 目录名（同一目录下多个会话会互相覆盖，这是已知简化）。
+狀態文件是多專案結構：{"projects": {"<項目名>": {"status","tool","ts"}, ...}}
+項目名取自 hook payload 裏的 cwd 目錄名（同一目錄下多個會話會互相覆蓋，這是已知簡化）。
 
-设计原则：绝不报错、绝不卡住 Claude Code —— 出任何问题都静默 exit 0。
+設計原則：絕不報錯、絕不卡住 Claude Code —— 出任何問題都靜默 exit 0。
 """
 
 import json
@@ -32,9 +32,9 @@ EVENT_TO_STATUS = {
     "pretooluse": "working",
     "posttooluse": "thinking",
     "notification": "waiting",
-    "permissionrequest": "waiting",  # 弹 allow 询问的专属事件（Notification 在桌面版不一定触发）
+    "permissionrequest": "waiting",  # 彈 allow 詢問的專屬事件（Notification 在桌面版不一定觸發）
     "stop": "done",
-    "subagentstop": "done",  # 子任务结束≠主线还在忙，若接着真有动作会被后续事件覆盖
+    "subagentstop": "done",  # 子任務結束≠主線還在忙，若接着真有動作會被後續事件覆蓋
 }
 
 
@@ -68,11 +68,11 @@ def main():
         tmp = STATUS_FILE + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump(data, f)
-        os.replace(tmp, STATUS_FILE)  # 原子写入
+        os.replace(tmp, STATUS_FILE)  # 原子寫入
     except Exception:
-        pass  # 写不了也不能影响 Claude Code
+        pass  # 寫不了也不能影響 Claude Code
 
-    # 调试日志：记录每次事件，排查哪些 hook 有/没触发
+    # 調試日誌：記錄每次事件，排查哪些 hook 有/沒觸發
     try:
         with open(os.path.expanduser("~/.claude/pet_events.log"), "a", encoding="utf-8") as f:
             f.write(f"{time.strftime('%H:%M:%S')} {event} -> {status} [{project}]\n")
@@ -85,4 +85,4 @@ if __name__ == "__main__":
         main()
     except Exception:
         pass
-    sys.exit(0)  # 永远成功退出，绝不阻塞
+    sys.exit(0)  # 永遠成功退出，絕不阻塞

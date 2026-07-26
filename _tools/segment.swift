@@ -5,7 +5,7 @@ import CoreImage
 import ImageIO
 
 // 用法: segment <video> <outDir> <count>
-// 双通道抠图：Vision人物分割(保头发/身体) ∪ 亮度抠黑(保茶壶/水流)，黑背景→透明
+// 雙通道摳圖：Vision人物分割(保頭髮/身體) ∪ 亮度摳黑(保茶壺/水流)，黑背景→透明
 let args = CommandLine.arguments
 guard args.count >= 4, let count = Int(args[3]) else {
     FileHandle.standardError.write("usage: segment <video> <outDir> <count>\n".data(using: .utf8)!)
@@ -24,7 +24,7 @@ func savePNG(_ cg: CGImage, _ path: String) {
     CGImageDestinationFinalize(dest)
 }
 
-// 亮度抠黑：原色不变，alpha=亮度(锐化)，纯黑→透明
+// 亮度摳黑：原色不變，alpha=亮度(銳化)，純黑→透明
 func keyBlack(_ ci: CIImage) -> CIImage {
     let m1 = CIFilter(name: "CIColorMatrix")!
     m1.setValue(ci, forKey: kCIInputImageKey)
@@ -44,11 +44,11 @@ func keyBlack(_ ci: CIImage) -> CIImage {
     return clamp.outputImage!
 }
 
-// 用一张灰度mask给原图套alpha
+// 用一張灰度mask給原圖套alpha
 func applyMask(_ ci: CIImage, _ maskGray: CIImage) -> CIImage {
-    let toAlpha = CIFilter(name: "CIMaskToAlpha")!          // 亮度→alpha, 输出白色
+    let toAlpha = CIFilter(name: "CIMaskToAlpha")!          // 亮度→alpha, 輸出白色
     toAlpha.setValue(maskGray, forKey: kCIInputImageKey)
-    let srcIn = CIFilter(name: "CISourceInCompositing")!    // 原图 ∩ mask的alpha
+    let srcIn = CIFilter(name: "CISourceInCompositing")!    // 原圖 ∩ mask的alpha
     srcIn.setValue(ci, forKey: kCIInputImageKey)
     srcIn.setValue(toAlpha.outputImage!, forKey: kCIInputBackgroundImageKey)
     return srcIn.outputImage!
@@ -60,8 +60,8 @@ Task {
     let asset = AVURLAsset(url: URL(fileURLWithPath: videoPath))
     var dur = 0.0
     do { dur = try await CMTimeGetSeconds(asset.load(.duration)) }
-    catch { err("加载失败: \(error)"); return }
-    guard dur > 0 else { err("读不到视频"); return }
+    catch { err("加載失敗: \(error)"); return }
+    guard dur > 0 else { err("讀不到視頻"); return }
 
     let gen = AVAssetImageGenerator(asset: asset)
     gen.appliesPreferredTrackTransform = true
@@ -78,10 +78,10 @@ Task {
         let cmt = CMTime(seconds: min(max(0, t), dur - 0.05), preferredTimescale: 600)
         let cg: CGImage
         do { cg = try gen.copyCGImage(at: cmt, actualTime: nil) }
-        catch { err("frame \(i): 取帧失败"); continue }
+        catch { err("frame \(i): 取幀失敗"); continue }
         let ci = CIImage(cgImage: cg)
 
-        // 通道A：亮度抠黑
+        // 通道A：亮度摳黑
         let lumaImg = keyBlack(ci)
         // 通道B：人物分割
         var personImg: CIImage? = nil
@@ -93,14 +93,14 @@ Task {
             maskCI = maskCI.transformed(by: CGAffineTransform(scaleX: sx, y: sy))
             personImg = applyMask(ci, maskCI)
         }
-        // 并集：人物 over 亮度（同一原色 → alpha取并集）
+        // 並集：人物 over 亮度（同一原色 → alpha取並集）
         let combined = personImg != nil ? personImg!.composited(over: lumaImg) : lumaImg
         guard let outCG = ctx.createCGImage(combined, from: ci.extent) else {
-            err("frame \(i): 渲染失败"); continue
+            err("frame \(i): 渲染失敗"); continue
         }
         savePNG(outCG, "\(outDir)/frame_\(String(format: "%02d", i)).png")
         saved += 1
     }
-    print("完成，抠出 \(saved)/\(count) 帧 → \(outDir)")
+    print("完成，摳出 \(saved)/\(count) 幀 → \(outDir)")
 }
 sem.wait()

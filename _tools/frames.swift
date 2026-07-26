@@ -5,7 +5,7 @@ import CoreImage
 import ImageIO
 
 // 用法: frames <video> <outDir> <fps> <targetHeight>
-// 抽帧→双通道抠图(人物∪亮度,去黑底)→锐化边→全局裁剪→缩放→存PNG序列
+// 抽幀→雙通道摳圖(人物∪亮度,去黑底)→銳化邊→全局裁剪→縮放→存PNG序列
 let a = CommandLine.arguments
 guard a.count >= 5, let fps = Double(a[3]), let targetH = Double(a[4]) else {
     FileHandle.standardError.write("usage: frames <video> <outDir> <fps> <targetH>\n".data(using: .utf8)!); exit(1)
@@ -36,7 +36,7 @@ func keyBlack(_ ci: CIImage) -> CIImage {
     let c = CIFilter(name: "CIColorClamp")!; c.setValue(m2.outputImage!, forKey: kCIInputImageKey)
     return c.outputImage!
 }
-// 锐化灰度mask的边（提高对比，去柔边雾）
+// 銳化灰度mask的邊（提高對比，去柔邊霧）
 func sharpenMask(_ m: CIImage) -> CIImage {
     let f = CIFilter(name: "CIColorMatrix")!
     f.setValue(m, forKey: kCIInputImageKey)
@@ -56,7 +56,7 @@ func applyMask(_ ci: CIImage, _ maskGray: CIImage) -> CIImage {
     return s.outputImage!
 }
 
-// 把 CGImage 画进 RGBA8 缓冲，返回 (bytes,w,h,bpr)
+// 把 CGImage 畫進 RGBA8 緩衝，返回 (bytes,w,h,bpr)
 func rgba(_ cg: CGImage) -> ([UInt8], Int, Int, Int) {
     let w = cg.width, h = cg.height, bpr = w * 4
     var buf = [UInt8](repeating: 0, count: bpr * h)
@@ -73,8 +73,8 @@ Task {
     defer { sem.signal() }
     let asset = AVURLAsset(url: URL(fileURLWithPath: videoPath))
     var dur = 0.0
-    do { dur = try await CMTimeGetSeconds(asset.load(.duration)) } catch { err("加载失败"); return }
-    guard dur > 0 else { err("读不到视频"); return }
+    do { dur = try await CMTimeGetSeconds(asset.load(.duration)) } catch { err("加載失敗"); return }
+    guard dur > 0 else { err("讀不到視頻"); return }
     let gen = AVAssetImageGenerator(asset: asset)
     gen.appliesPreferredTrackTransform = true
     gen.requestedTimeToleranceBefore = .zero; gen.requestedTimeToleranceAfter = .zero
@@ -85,11 +85,11 @@ Task {
     let n = max(1, Int((dur * fps).rounded()))
     var smalls: [CGImage] = []
     var scaleUsed: CGFloat = 1
-    // 第一遍：抠图 + 缩小
+    // 第一遍：摳圖 + 縮小
     for i in 0..<n {
         let t = min(Double(i) / fps, dur - 0.05)
         let cmt = CMTime(seconds: max(0, t), preferredTimescale: 600)
-        guard let cg = try? gen.copyCGImage(at: cmt, actualTime: nil) else { err("frame \(i) 取帧失败"); continue }
+        guard let cg = try? gen.copyCGImage(at: cmt, actualTime: nil) else { err("frame \(i) 取幀失敗"); continue }
         let ci = CIImage(cgImage: cg)
         let luma = keyBlack(ci)
         var person: CIImage? = nil
@@ -105,9 +105,9 @@ Task {
         let scaled = combined.transformed(by: CGAffineTransform(scaleX: scaleUsed, y: scaleUsed))
         if let s = ctx.createCGImage(scaled, from: scaled.extent) { smalls.append(s) }
     }
-    guard !smalls.isEmpty else { err("没抠到任何帧"); return }
+    guard !smalls.isEmpty else { err("沒摳到任何幀"); return }
 
-    // 全局内容包围盒（alpha>30）
+    // 全局內容包圍盒（alpha>30）
     var minX = Int.max, minY = Int.max, maxX = 0, maxY = 0
     for s in smalls {
         let (b, w, h, bpr) = rgba(s)
@@ -123,7 +123,7 @@ Task {
     let W = smalls[0].width, H = smalls[0].height
     maxX = min(W - 1, maxX + pad); maxY = min(H - 1, maxY + pad)
     let crop = CGRect(x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1)
-    err("帧数=\(smalls.count) 裁剪框=\(crop)")
+    err("幀數=\(smalls.count) 裁剪框=\(crop)")
 
     // 第二遍：裁剪 + 存
     var idx = 0
@@ -132,6 +132,6 @@ Task {
             savePNG(c, "\(outDir)/f\(String(format: "%03d", idx)).png"); idx += 1
         }
     }
-    print("完成：\(idx) 帧 → \(outDir)，单帧尺寸 \(Int(crop.width))x\(Int(crop.height))")
+    print("完成：\(idx) 幀 → \(outDir)，單幀尺寸 \(Int(crop.width))x\(Int(crop.height))")
 }
 sem.wait()

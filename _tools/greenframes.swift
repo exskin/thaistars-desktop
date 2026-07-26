@@ -4,10 +4,10 @@ import CoreImage
 import ImageIO
 
 // 用法: greenframes <video> <outDir> <fps> <targetHeight> [hueMin] [hueMax] [cropLeftFrac] [cropRightFrac] [--nokey]
-// 抽帧→(可选)左右裁边→色度键(去背景,保留人物/道具/水流)→全局裁剪→缩放→存PNG序列
-// hueMin/hueMax 可选，默认 0.40/0.54（青绿幕）；橄榄绿等其他底色可自行传入 0-1 的色相区间
-// cropLeftFrac/cropRightFrac 可选(0~1)：画面里有别人闯入镜头时，先按比例裁掉那一侧，再抠图
-// --nokey：不去背景，原始画面直接存（放在参数任意位置都行）
+// 抽幀→(可選)左右裁邊→色度鍵(去背景,保留人物/道具/水流)→全局裁剪→縮放→存PNG序列
+// hueMin/hueMax 可選，默認 0.40/0.54（青綠幕）；橄欖綠等其他底色可自行傳入 0-1 的色相區間
+// cropLeftFrac/cropRightFrac 可選(0~1)：畫面裏有別人闖入鏡頭時，先按比例裁掉那一側，再摳圖
+// --nokey：不去背景，原始畫面直接存（放在參數任意位置都行）
 var argv = CommandLine.arguments
 let noKey = argv.contains { $0 == "--nokey" }
 argv.removeAll { $0 == "--nokey" }
@@ -19,7 +19,7 @@ let hueMin = a.count >= 6 ? (Float(a[5]) ?? 0.40) : 0.40
 let hueMax = a.count >= 7 ? (Float(a[6]) ?? 0.54) : 0.54
 let cropLeftFrac = a.count >= 8 ? (Double(a[7]) ?? 0) : 0
 let cropRightFrac = a.count >= 9 ? (Double(a[8]) ?? 0) : 0
-// 可选第9参数：亮度低于此值的像素(近黑色,如闯入的黑衣袖)也抠掉,0=关闭
+// 可選第9參數：亮度低於此值的像素(近黑色,如闖入的黑衣袖)也摳掉,0=關閉
 let blackVMax = a.count >= 10 ? (Float(a[9]) ?? 0) : 0
 let videoPath = a[1], outDir = a[2]
 try? FileManager.default.createDirectory(atPath: outDir, withIntermediateDirectories: true)
@@ -37,7 +37,7 @@ func rgb2hsv(_ r: Float, _ g: Float, _ b: Float) -> (Float, Float, Float) {
     }
     return (h, mx == 0 ? 0 : d / mx, mx)
 }
-// 构建青绿色度键立方体：背景H≈0.476,S高 → alpha0；其余 alpha1
+// 構建青綠色度鍵立方體：背景H≈0.476,S高 → alpha0；其餘 alpha1
 func greenKeyFilter() -> CIFilter {
     let size = 64
     var cube = [Float](); cube.reserveCapacity(size*size*size*4)
@@ -67,7 +67,7 @@ func rgba(_ cg: CGImage) -> ([UInt8], Int, Int, Int) {
                         space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
     ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h)); return (buf, w, h, bpr)
 }
-// 后处理：只在画面左侧 zoneFrac 范围内，把近黑像素(闯入的黑衣袖)清成透明；人物深发在中间不受影响
+// 後處理：只在畫面左側 zoneFrac 範圍內，把近黑像素(闖入的黑衣袖)清成透明；人物深發在中間不受影響
 func removeBlackInLeftZone(_ cg: CGImage, vMax: Float, zoneFrac: Double) -> CGImage? {
     var (buf, w, h, bpr) = rgba(cg)
     let zoneX = Int(Double(w) * zoneFrac)
@@ -79,7 +79,7 @@ func removeBlackInLeftZone(_ cg: CGImage, vMax: Float, zoneFrac: Double) -> CGIm
             let r = buf[i], g = buf[i+1], b = buf[i+2]
             let mx = Float(max(r, g, b)) / 255  // premultiplied下近似亮度
             let isDark = mx <= vMax * Float(a) / 255
-            let isGreenish = g > r && g >= b     // 绿幕混进黑袖边缘的绿边(肤色r占优、白裙三色接近,不受影响)
+            let isGreenish = g > r && g >= b     // 綠幕混進黑袖邊緣的綠邊(膚色r佔優、白裙三色接近,不受影響)
             if isDark || isGreenish {
                 buf[i] = 0; buf[i+1] = 0; buf[i+2] = 0; buf[i+3] = 0
             }
@@ -95,8 +95,8 @@ Task {
     defer { sem.signal() }
     let asset = AVURLAsset(url: URL(fileURLWithPath: videoPath))
     var dur = 0.0
-    do { dur = try await CMTimeGetSeconds(asset.load(.duration)) } catch { err("加载失败"); return }
-    guard dur > 0 else { err("读不到视频"); return }
+    do { dur = try await CMTimeGetSeconds(asset.load(.duration)) } catch { err("加載失敗"); return }
+    guard dur > 0 else { err("讀不到視頻"); return }
     let gen = AVAssetImageGenerator(asset: asset)
     gen.appliesPreferredTrackTransform = true
     gen.requestedTimeToleranceBefore = .zero; gen.requestedTimeToleranceAfter = .zero
@@ -108,7 +108,7 @@ Task {
     for i in 0..<n {
         let t = min(Double(i) / fps, dur - 0.05)
         guard let cg = try? gen.copyCGImage(at: CMTime(seconds: max(0, t), preferredTimescale: 600), actualTime: nil)
-        else { err("frame \(i) 取帧失败"); continue }
+        else { err("frame \(i) 取幀失敗"); continue }
         var full = CIImage(cgImage: cg)
         if cropLeftFrac > 0 || cropRightFrac > 0 {
             let w = full.extent.width
@@ -129,9 +129,9 @@ Task {
             smalls.append(s)
         }
     }
-    guard !smalls.isEmpty else { err("没抠到任何帧"); return }
+    guard !smalls.isEmpty else { err("沒摳到任何幀"); return }
 
-    // 全局内容包围盒
+    // 全局內容包圍盒
     var minX = Int.max, minY = Int.max, maxX = 0, maxY = 0
     for s in smalls {
         let (b, w, h, bpr) = rgba(s)
@@ -144,12 +144,12 @@ Task {
     minX = max(0, minX - pad); minY = max(0, minY - pad)
     maxX = min(W - 1, maxX + pad); maxY = min(H - 1, maxY + pad)
     let crop = CGRect(x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1)
-    err("帧数=\(smalls.count) 裁剪框=\(crop)")
+    err("幀數=\(smalls.count) 裁剪框=\(crop)")
 
     var idx = 0
     for s in smalls where s.cropping(to: crop) != nil {
         savePNG(s.cropping(to: crop)!, "\(outDir)/f\(String(format: "%03d", idx)).png"); idx += 1
     }
-    print("完成：\(idx) 帧 → \(outDir)，单帧 \(Int(crop.width))x\(Int(crop.height))")
+    print("完成：\(idx) 幀 → \(outDir)，單幀 \(Int(crop.width))x\(Int(crop.height))")
 }
 sem.wait()

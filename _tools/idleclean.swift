@@ -4,7 +4,7 @@ import CoreImage
 import ImageIO
 
 // 用法: idleclean <video> <outDir> <fps> <targetHeight> <hueMin> <hueMax>
-// 抠图(色度键) → 每帧只保留最大的一块不透明区域(去掉画面外闯入的小块干扰) → 全局裁剪 → 缩放 → 存PNG
+// 摳圖(色度鍵) → 每幀只保留最大的一塊不透明區域(去掉畫面外闖入的小塊干擾) → 全局裁剪 → 縮放 → 存PNG
 let a = CommandLine.arguments
 guard a.count >= 7, let fps = Double(a[3]), let targetH = Double(a[4]),
       let hueMin = Float(a[5]), let hueMax = Float(a[6]) else {
@@ -62,7 +62,7 @@ func fromRGBA(_ buf: [UInt8], _ w: Int, _ h: Int, _ bpr: Int) -> CGImage? {
     return ctx.makeImage()
 }
 
-// 只保留面积最大的连通块，其余(比如画面边缘闯入的一小截手臂)清成透明
+// 只保留面積最大的連通塊，其餘(比如畫面邊緣闖入的一小截手臂)清成透明
 func keepLargestComponent(_ buf: inout [UInt8], _ w: Int, _ h: Int, _ bpr: Int) {
     var label = [Int32](repeating: 0, count: w * h)
     var compSize: [Int32: Int] = [:]
@@ -112,8 +112,8 @@ Task {
     defer { sem.signal() }
     let asset = AVURLAsset(url: URL(fileURLWithPath: videoPath))
     var dur = 0.0
-    do { dur = try await CMTimeGetSeconds(asset.load(.duration)) } catch { err("加载失败"); return }
-    guard dur > 0 else { err("读不到视频"); return }
+    do { dur = try await CMTimeGetSeconds(asset.load(.duration)) } catch { err("加載失敗"); return }
+    guard dur > 0 else { err("讀不到視頻"); return }
     let gen = AVAssetImageGenerator(asset: asset)
     gen.appliesPreferredTrackTransform = true
     gen.requestedTimeToleranceBefore = .zero; gen.requestedTimeToleranceAfter = .zero
@@ -125,7 +125,7 @@ Task {
     for i in 0..<n {
         let t = min(Double(i) / fps, dur - 0.05)
         guard let cg = try? gen.copyCGImage(at: CMTime(seconds: max(0, t), preferredTimescale: 600), actualTime: nil)
-        else { err("frame \(i) 取帧失败"); continue }
+        else { err("frame \(i) 取幀失敗"); continue }
         keyer.setValue(CIImage(cgImage: cg), forKey: kCIInputImageKey)
         guard let keyed = keyer.outputImage else { continue }
         let scale = targetH / keyed.extent.height
@@ -136,7 +136,7 @@ Task {
         guard let cleaned = fromRGBA(buf, w, h, bpr) else { continue }
         smalls.append(cleaned)
     }
-    guard !smalls.isEmpty else { err("没抠到任何帧"); return }
+    guard !smalls.isEmpty else { err("沒摳到任何幀"); return }
 
     var minX = Int.max, minY = Int.max, maxX = 0, maxY = 0
     for s in smalls {
@@ -150,12 +150,12 @@ Task {
     minX = max(0, minX - pad); minY = max(0, minY - pad)
     maxX = min(W - 1, maxX + pad); maxY = min(H - 1, maxY + pad)
     let crop = CGRect(x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1)
-    err("帧数=\(smalls.count) 裁剪框=\(crop)")
+    err("幀數=\(smalls.count) 裁剪框=\(crop)")
 
     var idx2 = 0
     for s in smalls where s.cropping(to: crop) != nil {
         savePNG(s.cropping(to: crop)!, "\(outDir)/f\(String(format: "%03d", idx2)).png"); idx2 += 1
     }
-    print("完成：\(idx2) 帧 → \(outDir)，单帧 \(Int(crop.width))x\(Int(crop.height))")
+    print("完成：\(idx2) 幀 → \(outDir)，單幀 \(Int(crop.width))x\(Int(crop.height))")
 }
 sem.wait()
