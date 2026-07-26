@@ -8,7 +8,7 @@ import UniformTypeIdentifiers
 // Claude Code 桌寵（原生版）：透明置頂窗口 + PNG幀動畫 + 狀態氣泡
 // 狀態來自 ~/.claude/claude_pet_status.json（hooks 寫入）
 
-let FRAME_MS = 83.0 / 1000.0    // ~12fps
+let FRAME_MS = 1.0 / 15.0       // 15fps，需跟 process()/greenframes 抽帧的 fps 對齊，否則配音效的素材會聲畫不同步
 let POLL_S = 0.25
 let STALE_SEC = 600.0           // 單個專案超過這麼久沒動靜（10分鐘）→ 該專案視爲 idle
 let LIST_STALE_SEC = 1800.0     // 超過這麼久沒動靜 → 該專案從清單消失（視爲已結束）
@@ -152,11 +152,21 @@ final class AppSettings: ObservableObject {
     // 生日（只存月/日，每年自動觸發）；0 = 未設定
     @Published var birthdayMonth: Int { didSet { UserDefaults.standard.set(birthdayMonth, forKey: "petBirthdayMonth") } }
     @Published var birthdayDay: Int { didSet { UserDefaults.standard.set(birthdayDay, forKey: "petBirthdayDay") } }
+    @Published var soundMuted: Bool { didSet { UserDefaults.standard.set(soundMuted, forKey: "petSoundMuted") } }
+    // 生日影片今年播過了沒（存 yyyy-MM-dd）；播完一輪就記錄，當天不再重播，之後照舊跟隨 Claude Code 狀態
+    @Published var birthdayLastShownDate: String { didSet { UserDefaults.standard.set(birthdayLastShownDate, forKey: "petBirthdayLastShownDate") } }
 
     var isBirthdayToday: Bool {
         guard birthdayMonth > 0, birthdayDay > 0 else { return false }
         let c = Calendar.current.dateComponents([.month, .day], from: Date())
         return c.month == birthdayMonth && c.day == birthdayDay
+    }
+    static func todayString() -> String {
+        let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"
+        return f.string(from: Date())
+    }
+    var shouldShowBirthdayNow: Bool {
+        isBirthdayToday && birthdayLastShownDate != Self.todayString()
     }
 
     func aboutDesigner(_ lang: Lang) -> String {
@@ -179,6 +189,8 @@ final class AppSettings: ObservableObject {
         aboutIntroTh = d.string(forKey: "petAboutIntroTh") ?? ""
         birthdayMonth = d.integer(forKey: "petBirthdayMonth")
         birthdayDay = d.integer(forKey: "petBirthdayDay")
+        soundMuted = d.bool(forKey: "petSoundMuted")
+        birthdayLastShownDate = d.string(forKey: "petBirthdayLastShownDate") ?? ""
     }
 }
 
@@ -193,6 +205,7 @@ final class PetView: NSView {
     var onOpenSettings: (() -> Void)?
     var onQuit: (() -> Void)?
     var settings: AppSettings!
+    var soundButtonRect: NSRect = .zero   // 靜音切換鈕的點擊範圍（畫的時候順便算好）
 
     override var acceptsFirstResponder: Bool { true }
 
@@ -233,6 +246,18 @@ final class PetView: NSView {
         // 人物（頂部對齊居中，位於清單+氣泡之上）
         let x = (bounds.width - iw) / 2
         img.draw(in: NSRect(x: x, y: LIST_H + BUBBLE_H, width: iw, height: ih))
+
+        // 靜音切換鈕（人物圖右下角）
+        let btnSize: CGFloat = 22
+        soundButtonRect = NSRect(x: x + iw - btnSize - 2, y: LIST_H + BUBBLE_H + 2, width: btnSize, height: btnSize)
+        let muted = settings?.soundMuted ?? false
+        let btnBg = NSBezierPath(ovalIn: soundButtonRect)
+        NSColor(red: 0.125, green: 0.137, blue: 0.165, alpha: 0.75).setFill()
+        btnBg.fill()
+        let btnEmoji = (muted ? "🔇" : "🔊") as NSString
+        btnEmoji.draw(at: NSPoint(x: soundButtonRect.minX + 2, y: soundButtonRect.minY + 2),
+                       withAttributes: [.font: NSFont.systemFont(ofSize: 14)])
+
         // 氣泡（清單正上方）
         let bubble = NSBezierPath(roundedRect: NSRect(x: 12, y: LIST_H + 2, width: bw, height: 24), xRadius: 12, yRadius: 12)
         NSColor(red: 0.125, green: 0.137, blue: 0.165, alpha: 0.95).setFill()
@@ -267,6 +292,16 @@ final class PetView: NSView {
     }
     @objc func openSettingsClicked() { onOpenSettings?() }
     @objc func quitClicked() { onQuit?() }
+    // 點靜音鈕就切換靜音，不讓事件往下傳（避免觸發視窗拖動）
+    override func mouseDown(with event: NSEvent) {
+        let p = convert(event.locationInWindow, from: nil)
+        if soundButtonRect.insetBy(dx: -4, dy: -4).contains(p) {
+            settings?.soundMuted.toggle()
+            needsDisplay = true
+            return
+        }
+        super.mouseDown(with: event)
+    }
     // 雙擊 → 切回 Claude App
     override func mouseUp(with event: NSEvent) {
         if event.clickCount == 2 {
@@ -391,8 +426,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // 幀動畫（靜止組不推進）
         Timer.scheduledTimer(withTimeInterval: FRAME_MS, repeats: true) { [weak self] _ in
             guard let self, self.view.animate, self.view.frames.count > 1 else { return }
+            let wasLastFrame = self.view.fi == self.view.frames.count - 1
             self.view.fi = (self.view.fi + 1) % self.view.frames.count
             self.view.needsDisplay = true
+            // 生日影片播完一輪 → 記錄今天播過了，立刻切回跟隨 Claude Code 的正常動作
+            if wasLastFrame, self.curGroup == "birthday" {
+                self.settings.birthdayLastShownDate = AppSettings.todayString()
+                self.pollStatus()
+            }
         }
         // 狀態輪詢
         Timer.scheduledTimer(withTimeInterval: POLL_S, repeats: true) { [weak self] _ in
@@ -417,7 +458,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         view.label = stateText("shutdown", settings.lang)
         view.dot = STATES["shutdown"]!.dot
         view.needsDisplay = true
-        if let snd = sounds["shutdown"] { snd.currentTime = 0; snd.play() }
+        if let snd = sounds["shutdown"], !settings.soundMuted { snd.currentTime = 0; snd.play() }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { NSApp.terminate(nil) }
     }
 
@@ -433,7 +474,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         view.fi = 0
         view.needsDisplay = true
         // 進入帶音效的狀態 → 播一聲呼叫
-        if let snd = sounds[status] { snd.currentTime = 0; snd.play() }
+        if let snd = sounds[status], !settings.soundMuted { snd.currentTime = 0; snd.play() }
     }
 
     func pollStatus() {
@@ -467,7 +508,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // 桌寵本人跟隨全體專案裏優先級最高的狀態走（waiting 優先）；生日當天整天蓋過其他狀態
         let priorityKey = PRIORITY.first { p in live.contains { $0.status == p } } ?? "boot"
-        let key = settings.isBirthdayToday ? "birthday" : priorityKey
+        let key = settings.shouldShowBirthdayNow ? "birthday" : priorityKey
         let st = STATES[key]!
         let text = stateText(key, settings.lang)
         if view.badge != st.badge || view.label != text {
