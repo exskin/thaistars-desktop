@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+.DS_Store
+pet.log
+
+# 编译产物（Swift 二进制，clone 下来自己用 swiftc 重新编译）
+宠物本体
+_tools/greenframes
+_tools/segment
+_tools/preview
+_tools/extract_audio
+_tools/raw_frames
+_tools/trim_clip
+_tools/idleclean
+_tools/probe_instance
+_tools/frames
