@@ -246,11 +246,16 @@ final class PetView: NSView {
             let color = isWaiting
                 ? NSColor(red: 1.0, green: 0.55, blue: 0.70, alpha: 1)
                 : NSColor(white: 1, alpha: 0.62)
+            // 名字+狀態太長就用刪節號截斷，而不是被視窗邊緣硬生生切掉看不全
+            let truncating = NSMutableParagraphStyle()
+            truncating.lineBreakMode = .byTruncatingTail
             let attrs: [NSAttributedString.Key: Any] = [
                 .font: NSFont.systemFont(ofSize: 10.5, weight: isWaiting ? .bold : .regular),
                 .foregroundColor: color,
+                .paragraphStyle: truncating,
             ]
-            text.draw(at: NSPoint(x: 26, y: y + 2), withAttributes: attrs)
+            let availW = max(20, (12 + bw) - 26 - 4)
+            text.draw(in: NSRect(x: 26, y: y + 2, width: availW, height: ROW_H - 2), withAttributes: attrs)
         }
 
         guard !frames.isEmpty else { return }
@@ -395,7 +400,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NSApp.terminate(nil); return
         }
         // 窗口取所有動作組的最大尺寸，保證每個動作都放得下
-        var maxW: CGFloat = 150, maxH: CGFloat = 0
+        var maxW: CGFloat = 210, maxH: CGFloat = 0   // 210：留夠寬度給專案清單的名字+狀態文字
         for f in groups.values { for img in f {
             maxW = max(maxW, img.size.width); maxH = max(maxH, img.size.height)
         }}
@@ -903,17 +908,44 @@ struct AboutSettingsView: View {
     }
 }
 
+// 自訂分頁鈕，不用系統原生 TabView（原生的會在頂部多一條淺色底）
+struct PetTabButton: View {
+    let title: String
+    let isSelected: Bool
+    let action: () -> Void
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 12, weight: isSelected ? .semibold : .regular))
+                .padding(.horizontal, 12).padding(.vertical, 5)
+                .background(isSelected ? Color.gray.opacity(0.25) : Color.clear)
+                .cornerRadius(6)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
 struct DIYSettingsView: View {
     @ObservedObject var model: SettingsModel
+    @State private var selectedTab: Int = 0
     var body: some View {
         let lang = model.settings.lang
-        TabView {
-            ActionsSettingsView(model: model)
-                .tabItem { Text(L.t("settings.tab.actions", lang)) }
-            GeneralSettingsView(settings: model.settings)
-                .tabItem { Text(L.t("settings.tab.general", lang)) }
-            AboutSettingsView(settings: model.settings)
-                .tabItem { Text(L.t("settings.tab.about", lang)) }
+        VStack(spacing: 0) {
+            HStack(spacing: 4) {
+                PetTabButton(title: L.t("settings.tab.actions", lang), isSelected: selectedTab == 0) { selectedTab = 0 }
+                PetTabButton(title: L.t("settings.tab.general", lang), isSelected: selectedTab == 1) { selectedTab = 1 }
+                PetTabButton(title: L.t("settings.tab.about", lang), isSelected: selectedTab == 2) { selectedTab = 2 }
+                Spacer()
+            }
+            .padding(10)
+            Divider()
+            Group {
+                switch selectedTab {
+                case 0: ActionsSettingsView(model: model)
+                case 1: GeneralSettingsView(settings: model.settings)
+                default: AboutSettingsView(settings: model.settings)
+                }
+            }
         }
         .frame(width: 440, height: 560)
     }

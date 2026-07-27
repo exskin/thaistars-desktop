@@ -69,6 +69,10 @@ frames/<狀態名>/          每個狀態的動作幀序列（PNG + 可選 sound
 啓動桌寵.command          啓動腳本
 ```
 
+## 更新日誌
+
+詳見 [CHANGELOG.md](CHANGELOG.md)。
+
 ## License
 
 程式碼使用 [MIT License](LICENSE)。`frames/` 等資料夾裏的影片衍生素材另見 [NOTICE.md](NOTICE.md)，不受此授權約束。
